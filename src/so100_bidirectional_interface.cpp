@@ -1,0 +1,453 @@
+#include "so100_bidirectional/so100_bidirectional_interface.hpp"
+#include <hardware_interface/types/hardware_interface_type_values.hpp>
+#include <pluginlib/class_list_macros.hpp>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+#include <iostream>
+#include <chrono>
+#include <cmath>
+#include <string>
+#include <thread>
+#include <sstream>
+
+#include "rclcpp/rclcpp.hpp"
+#include <sensor_msgs/msg/joint_state.hpp>
+#include <std_srvs/srv/trigger.hpp>
+
+namespace so100_bidirectional
+{
+SO100BidirectionalInterface::SO100BidirectionalInterface() 
+{
+}
+
+SO100BidirectionalInterface::~SO100BidirectionalInterface()
+{
+    if (use_serial_) {
+        st3215_.end();
+    }
+}
+
+CallbackReturn SO100BidirectionalInterface::on_init(const hardware_interface::HardwareInfo &hardware_info)
+{
+    CallbackReturn result = hardware_interface::SystemInterface::on_init(hardware_info);
+    if (result != CallbackReturn::SUCCESS)
+    {
+        return result;
+    }
+
+    // Debug: Print all received parameters
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), "Hardware parameters received:");
+    for (const auto& param : hardware_info.hardware_parameters) {
+        RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                   "  %s = %s", param.first.c_str(), param.second.c_str());
+    }
+
+    use_serial_ = hardware_info.hardware_parameters.count("use_serial") ?
+        (hardware_info.hardware_parameters.at("use_serial") == "true" || 
+         hardware_info.hardware_parameters.at("use_serial") == "True") : false;
+    
+    serial_port_ = hardware_info.hardware_parameters.count("serial_port") ?
+        hardware_info.hardware_parameters.at("serial_port") : "/dev/ttyUSB0";
+    
+    serial_baudrate_ = hardware_info.hardware_parameters.count("serial_baudrate") ?
+        std::stoi(hardware_info.hardware_parameters.at("serial_baudrate")) : 1000000;
+
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+               "Configuration: use_serial=%s, port=%s, baudrate=%d", 
+               use_serial_ ? "true" : "false", serial_port_.c_str(), serial_baudrate_);
+
+    size_t num_joints = info_.joints.size();
+    position_commands_.resize(num_joints, 0.0);
+    position_states_.resize(num_joints, 0.0);
+    velocity_states_.resize(num_joints, 0.0);
+
+    return CallbackReturn::SUCCESS;
+}
+
+std::vector<hardware_interface::StateInterface> SO100BidirectionalInterface::export_state_interfaces()
+{
+    std::vector<hardware_interface::StateInterface> state_interfaces;
+    for (size_t i = 0; i < info_.joints.size(); i++)
+    {
+        state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &position_states_[i]);
+        state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &velocity_states_[i]);
+    }
+    return state_interfaces;
+}
+
+std::vector<hardware_interface::CommandInterface> SO100BidirectionalInterface::export_command_interfaces()
+{
+    std::vector<hardware_interface::CommandInterface> command_interfaces;
+    for (size_t i = 0; i < info_.joints.size(); i++)
+    {
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, hardware_interface::HW_IF_POSITION, &position_commands_[i]));
+    }
+    return command_interfaces;
+}
+
+CallbackReturn SO100BidirectionalInterface::on_activate(const rclcpp_lifecycle::State & /*previous_state*/)
+{
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), "Activating so100_bidirectional hardware interface...");
+
+    if (use_serial_) {
+        RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                   "Attempting to connect to servos on %s at %d baud", serial_port_.c_str(), serial_baudrate_);
+        
+        if(!st3215_.begin(serial_baudrate_, serial_port_.c_str())) {
+            RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                        "Failed to initialize serial connection to %s", serial_port_.c_str());
+            return CallbackReturn::ERROR;
+        }
+        
+        RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                   "Serial connection established, testing servo communication...");
+
+        // Initialize each servo
+        for (size_t i = 0; i < info_.joints.size(); ++i) {
+            uint8_t servo_id = static_cast<uint8_t>(i + 1);
+            
+            RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Pinging servo %d...", servo_id);
+            
+            // First ping the servo
+            if (st3215_.Ping(servo_id) == -1) {
+                RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                            "No response from servo %d - check robot connection and power", servo_id);
+                RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                           "Running in simulation mode (no hardware responses)");
+                use_serial_ = false;  // Fall back to simulation mode
+                break;
+            }
+            
+            RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Servo %d responded successfully", servo_id);
+            
+            // Set to position control mode
+            if (!st3215_.Mode(servo_id, 0)) {
+                RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                            "Failed to set mode for servo %d", servo_id);
+                return CallbackReturn::ERROR;
+            }
+
+            // Read initial position and set command to match (no movement)
+            if (st3215_.FeedBack(servo_id) != -1) {
+                int pos = st3215_.ReadPos(servo_id);
+                position_states_[i] = ticks_to_radians(pos, i);
+                position_commands_[i] = position_states_[i];  // Match current position exactly
+                
+                // DO NOT send any position commands during initialization to prevent movement
+                // The servo will naturally hold its current position in position control mode
+                
+                RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                           "Servo %d initialized at position %d ticks (%.3f rad) - no commands sent", 
+                           servo_id, pos, position_states_[i]);
+            }
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        
+        RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                    "Serial communication initialized on %s", serial_port_.c_str());
+    }
+
+    node_ = rclcpp::Node::make_shared("so100_bidirectional_driver");
+
+    // Add services for calibration
+    calib_service_ = node_->create_service<std_srvs::srv::Trigger>(
+        "record_position",
+        std::bind(&SO100BidirectionalInterface::calibration_callback, this, 
+                  std::placeholders::_1, std::placeholders::_2));
+                  
+    torque_service_ = node_->create_service<std_srvs::srv::Trigger>(
+        "toggle_torque",
+        std::bind(&SO100BidirectionalInterface::torque_callback, this, 
+                  std::placeholders::_1, std::placeholders::_2));
+
+    executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+    executor_->add_node(node_);
+    spin_thread_ = std::thread([this]() { executor_->spin(); });
+
+    // Load calibration if available
+    std::string calib_file = info_.hardware_parameters.count("calibration_file") ?
+        info_.hardware_parameters.at("calibration_file") : "";
+        
+    if (!calib_file.empty()) {
+        if (!load_calibration(calib_file)) {
+            RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Failed to load calibration file: %s", calib_file.c_str());
+        }
+    }
+
+    // Mark initialization as complete - now safe to accept movement commands
+    initialization_complete_ = true;
+    
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), "Hardware interface activated");
+    return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn SO100BidirectionalInterface::on_deactivate(const rclcpp_lifecycle::State &)
+{
+    // Reset initialization flag to prevent movement during shutdown
+    initialization_complete_ = false;
+    
+    if (executor_) {
+        executor_->cancel();
+    }
+    if (spin_thread_.joinable()) {
+        spin_thread_.join();
+    }
+    
+    if (use_serial_) {
+        for (size_t i = 0; i < info_.joints.size(); ++i) {
+            uint8_t servo_id = static_cast<uint8_t>(i + 1);
+            st3215_.EnableTorque(servo_id, 0);
+        }
+    }
+    
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), "Hardware interface deactivated.");
+    return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+hardware_interface::return_type SO100BidirectionalInterface::write(const rclcpp::Time & time, const rclcpp::Duration & period)
+{
+    // Prevent movement until robot is properly calibrated and initialization is complete
+    if (!calibration_valid_ || !initialization_complete_) {
+        return hardware_interface::return_type::OK;  // Silently ignore commands
+    }
+    
+    if (use_serial_ && torque_enabled_) {
+        for (size_t i = 0; i < info_.joints.size(); ++i) {
+            uint8_t servo_id = static_cast<uint8_t>(i + 1);
+            int joint_pos_cmd = radians_to_ticks(position_commands_[i], i);
+            
+            if (!st3215_.RegWritePosEx(servo_id, joint_pos_cmd, 4500, 255)) {
+                RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                           "Failed to write position to servo %d", servo_id);
+            }
+        }
+        st3215_.RegWriteAction();
+    }
+
+    return hardware_interface::return_type::OK;
+}
+
+hardware_interface::return_type SO100BidirectionalInterface::read(const rclcpp::Time & time, const rclcpp::Duration & period)
+{
+    if (use_serial_) {
+        for (size_t i = 0; i < info_.joints.size(); ++i) {
+            uint8_t servo_id = static_cast<uint8_t>(i + 1);
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+            if (!torque_enabled_) {
+                // When torque is disabled, only try to read position
+                int raw_pos = st3215_.ReadPos(servo_id);
+                if (raw_pos != -1) {
+                    position_states_[i] = ticks_to_radians(raw_pos, i);
+                }
+                continue;
+            }
+
+            // Full feedback read when torque is enabled
+            if (st3215_.FeedBack(servo_id) != -1) {
+                int raw_pos = st3215_.ReadPos(servo_id);
+                position_states_[i] = ticks_to_radians(raw_pos, i);
+            } else {
+                RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                           "Failed to read feedback from servo %d", servo_id);
+            }
+        }
+    }
+
+    return hardware_interface::return_type::OK;
+}
+
+double SO100BidirectionalInterface::ticks_to_radians(int ticks, size_t servo_idx) 
+{
+    const std::string& joint_name = info_.joints[servo_idx].name;
+    
+    if (joint_calibration_.count(joint_name) > 0) {
+        const auto& calib = joint_calibration_[joint_name];
+        // Convert to normalized position first (0 to 1)
+        double normalized = (double)(ticks - calib.min_ticks) / calib.range_ticks;
+        // Then convert to radians (-π to π)
+        return (normalized * 2.0 - 1.0) * M_PI;
+    }
+    
+    // Fallback: assume 4096 ticks per full rotation, centered at 2048
+    return (ticks - 2048) * 2 * M_PI / 4096.0;
+}
+
+int SO100BidirectionalInterface::radians_to_ticks(double radians, size_t servo_idx) 
+{
+    const std::string& joint_name = info_.joints[servo_idx].name;
+    
+    if (joint_calibration_.count(joint_name) > 0) {
+        const auto& calib = joint_calibration_[joint_name];
+        // Convert from radians (-π to π) to normalized position (0 to 1)
+        double normalized = (radians / M_PI + 1.0) / 2.0;
+        // Then convert to ticks
+        return calib.min_ticks + (int)(normalized * calib.range_ticks);
+    }
+    
+    // Fallback: assume 4096 ticks per full rotation, centered at 2048
+    return 2048 + (int)(radians * 4096.0 / (2 * M_PI));
+}
+
+void SO100BidirectionalInterface::record_current_position() 
+{
+    std::stringstream ss;
+    ss << "{";
+    
+    bool first = true;
+    for (size_t i = 0; i < info_.joints.size(); ++i) {
+        uint8_t servo_id = static_cast<uint8_t>(i + 1);
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        
+        // Try multiple times to read the servo
+        int pos = -1;
+        for (int retry = 0; retry < 3 && pos == -1; retry++) {
+            st3215_.FeedBack(servo_id);
+            pos = st3215_.ReadPos(servo_id);
+            if (pos == -1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+        
+        if (!first) {
+            ss << ",";
+        }
+        first = false;
+        
+        ss << "\"" << info_.joints[i].name << "\": {"
+           << "\"ticks\": " << (pos != -1 ? pos : 0) << ","
+           << "\"speed\": " << st3215_.ReadSpeed(servo_id) << ","
+           << "\"load\": " << st3215_.ReadLoad(servo_id)
+           << "}";
+    }
+    ss << "}";
+    
+    last_calibration_data_ = ss.str();
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                "Recorded positions: %s", last_calibration_data_.c_str());
+}
+
+void SO100BidirectionalInterface::calibration_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+{
+    record_current_position();
+    response->success = true;
+    response->message = last_calibration_data_;
+    
+    // After calibration is completed and saved externally, user needs to restart 
+    // the hardware interface to reload the new calibration file
+}
+
+void SO100BidirectionalInterface::set_torque_enable(bool enable) 
+{
+    if (use_serial_) {
+        for (size_t i = 0; i < info_.joints.size(); ++i) {
+            uint8_t servo_id = static_cast<uint8_t>(i + 1);
+            
+            if (!enable) {
+                // Disable torque: set to idle mode, then disable
+                st3215_.Mode(servo_id, 2);  // Mode 2 = idle
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                st3215_.EnableTorque(servo_id, 0);
+            } else {
+                // Enable torque: set to position mode, then enable
+                st3215_.Mode(servo_id, 0);  // Mode 0 = position
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                st3215_.EnableTorque(servo_id, 1);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        torque_enabled_ = enable;
+        
+        RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                    "Torque %s for all servos", enable ? "enabled" : "disabled");
+    }
+}
+
+void SO100BidirectionalInterface::torque_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+{
+    bool new_state = !torque_enabled_;
+    
+    response->success = true;
+    response->message = std::string("Torque ") + (new_state ? "enabled" : "disabled");
+    
+    set_torque_enable(new_state);
+    
+    RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                "Torque service called, response: %s", response->message.c_str());
+}
+
+bool SO100BidirectionalInterface::load_calibration(const std::string& filepath) 
+{
+    try {
+        YAML::Node config = YAML::LoadFile(filepath);
+        auto joints = config["joints"];
+        if (!joints) {
+            RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                        "No joints section in calibration file");
+            return false;
+        }
+
+        for (const auto& joint : joints) {
+            std::string name = joint.first.as<std::string>();
+            const auto& data = joint.second;
+            
+            if (!data["min"] || !data["center"] || !data["max"]) {
+                RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                            "Missing calibration data for joint %s", name.c_str());
+                continue;
+            }
+
+            JointCalibration calib;
+            calib.min_ticks = data["min"]["ticks"].as<int>();
+            calib.center_ticks = data["center"]["ticks"].as<int>();
+            calib.max_ticks = data["max"]["ticks"].as<int>();
+            calib.range_ticks = calib.max_ticks - calib.min_ticks;
+            
+            joint_calibration_[name] = calib;
+            
+            RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Loaded calibration for %s: min=%d, center=%d, max=%d", 
+                       name.c_str(), calib.min_ticks, calib.center_ticks, calib.max_ticks);
+            
+            // Check if this is valid calibration data (not all zeros)
+            if (calib.min_ticks != 0 || calib.center_ticks != 0 || calib.max_ticks != 0) {
+                calibration_valid_ = true;
+            }
+        }
+        
+        if (calibration_valid_) {
+            RCLCPP_INFO(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Valid calibration loaded - robot movement enabled");
+        } else {
+            RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "No valid calibration found - robot movement disabled for safety");
+            RCLCPP_WARN(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                       "Please run calibration script to enable robot movement");
+        }
+        
+        return true;
+    } catch (const YAML::Exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("SO100BidirectionalInterface"), 
+                    "Failed to load calibration: %s", e.what());
+        return false;
+    }
+}
+
+}  // namespace so100_bidirectional
+
+PLUGINLIB_EXPORT_CLASS(so100_bidirectional::SO100BidirectionalInterface, hardware_interface::SystemInterface)

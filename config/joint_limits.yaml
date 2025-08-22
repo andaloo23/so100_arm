@@ -1,0 +1,33 @@
+/**:
+  ros__parameters:
+    joint_limits:
+      Shoulder_Rotation:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 2.0
+      Shoulder_Pitch:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 2.0
+      Elbow:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 2.0
+      Wrist_Pitch:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 2.0
+      Wrist_Roll:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 2.0
+      Gripper:
+        has_velocity_limits: true
+        max_velocity: 0.5
+        has_acceleration_limits: true
+        max_acceleration: 1.0

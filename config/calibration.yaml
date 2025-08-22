@@ -1,0 +1,80 @@
+timestamp: '2025-08-21T23:53:48.300688'
+joints:
+  shoulder_pan_joint:
+    min:
+      ticks: 2682
+      speed: 0
+      load: 0
+    center:
+      ticks: 1292
+      speed: 0
+      load: 0
+    max:
+      ticks: 870
+      speed: 0
+      load: -3026
+  shoulder_lift_joint:
+    min:
+      ticks: 1922
+      speed: 1277
+      load: 0
+    center:
+      ticks: 3016
+      speed: -50
+      load: -1
+    max:
+      ticks: 98
+      speed: 97
+      load: 0
+  elbow_joint:
+    min:
+      ticks: 977
+      speed: 0
+      load: 0
+    center:
+      ticks: 2132
+      speed: 50
+      load: 0
+    max:
+      ticks: 4049
+      speed: 0
+      load: 870
+  wrist_pitch_joint:
+    min:
+      ticks: 706
+      speed: 0
+      load: 0
+    center:
+      ticks: 1926
+      speed: 1252
+      load: -896
+    max:
+      ticks: 2816
+      speed: 0
+      load: 0
+  wrist_roll_joint:
+    min:
+      ticks: 11
+      speed: 0
+      load: 0
+    center:
+      ticks: 2058
+      speed: 0
+      load: 0
+    max:
+      ticks: 4030
+      speed: -1
+      load: -3006
+  gripper_joint:
+    min:
+      ticks: 1960
+      speed: 2030
+      load: -257
+    center:
+      ticks: 1462
+      speed: 0
+      load: 0
+    max:
+      ticks: 2315
+      speed: 0
+      load: -1010

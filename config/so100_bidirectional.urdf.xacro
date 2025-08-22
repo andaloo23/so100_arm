@@ -1,0 +1,247 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="so100_bidirectional">
+
+  <!-- Parameters -->
+  <xacro:arg name="serial_port" default="/dev/ttyACM0"/>
+  <xacro:arg name="use_fake_hardware" default="false"/>
+
+  <xacro:include filename="$(find so100_bidirectional)/config/so100_bidirectional.ros2_control.xacro"/>
+
+  <!-- Dummy world link to avoid KDL root link inertia warning -->
+  <link name="world"/>
+  
+  <!-- Fixed joint from world to base_link -->
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Base Link -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57079"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Base.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0.2 0.2 0.2 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Base.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 1: Base rotation (shoulder_pan) -->
+  <joint name="shoulder_pan_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="shoulder_pan_link"/>
+    <origin xyz="0.045 0 0.015" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57079" upper="1.57079" effort="100" velocity="2.0"/>
+  </joint>
+
+  <link name="shoulder_pan_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.0 0.0 1.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 2: Shoulder lift -->
+  <joint name="shoulder_lift_joint" type="revolute">
+    <parent link="shoulder_pan_link"/>
+    <child link="shoulder_lift_link"/>
+    <origin xyz="0.0305 0 0.1025" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57079" upper="1.57079" effort="100" velocity="2.0"/>
+  </joint>
+
+  <link name="shoulder_lift_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.0 1.0 0.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 3: Elbow -->
+  <joint name="elbow_joint" type="revolute">
+    <parent link="shoulder_lift_link"/>
+    <child link="elbow_link"/>
+    <origin xyz="0.028 0 0.1125" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.35619" upper="2.35619" effort="100" velocity="2.0"/>
+  </joint>
+
+  <link name="elbow_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 4: Wrist pitch -->
+  <joint name="wrist_pitch_joint" type="revolute">
+    <parent link="elbow_link"/>
+    <child link="wrist_pitch_link"/>
+    <origin xyz="0.135 0 0.005" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57079" upper="1.57079" effort="50" velocity="2.0"/>
+  </joint>
+
+  <link name="wrist_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57079"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="yellow">
+        <color rgba="1.0 1.0 0.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 5: Wrist roll -->
+  <joint name="wrist_roll_joint" type="revolute">
+    <parent link="wrist_pitch_link"/>
+    <child link="wrist_roll_link"/>
+    <origin xyz="0.06 0 0" rpy="0 3.14159 1.57079"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50" velocity="2.0"/>
+  </joint>
+
+  <link name="wrist_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="cyan">
+        <color rgba="0.0 1.0 1.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Joint 6: Gripper -->
+  <joint name="gripper_joint" type="revolute">
+    <parent link="wrist_roll_link"/>
+    <child link="gripper_link"/>
+    <origin xyz="-0.02 -0.0245 0" rpy="0 3.14159 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57079" upper="1.57079" effort="30" velocity="2.0"/>
+  </joint>
+
+  <link name="gripper_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="magenta">
+        <color rgba="1.0 0.0 1.0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://so100_bidirectional/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.05"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- End effector frame -->
+  <joint name="end_effector_joint" type="fixed">
+    <parent link="gripper_link"/>
+    <child link="end_effector_link"/>
+    <origin xyz="0.03 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="end_effector_link"/>
+
+  <!-- ROS2 Control -->
+  <xacro:so100_bidirectional_ros2_control 
+    name="SO100BidirectionalHardware" 
+    use_serial="true"
+    serial_port="$(arg serial_port)" 
+    serial_baudrate="1000000"
+    use_fake_hardware="$(arg use_fake_hardware)"
+    calibration_file="$(find so100_bidirectional)/config/calibration.yaml"/>
+
+</robot>
