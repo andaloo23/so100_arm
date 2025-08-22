@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(so100_bidirectional)
+project(so100_arm)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -31,18 +31,18 @@ target_include_directories(scservo_lib PUBLIC
 )
 
 # Hardware Interface
-add_library(so100_bidirectional_interface SHARED
-  src/so100_bidirectional_interface.cpp
+add_library(so100_arm_interface SHARED
+  src/so100_arm_interface.cpp
 )
 
-target_include_directories(so100_bidirectional_interface PUBLIC
+target_include_directories(so100_arm_interface PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(so100_bidirectional_interface scservo_lib yaml-cpp)
+target_link_libraries(so100_arm_interface scservo_lib yaml-cpp)
 
-ament_target_dependencies(so100_bidirectional_interface
+ament_target_dependencies(so100_arm_interface
   rclcpp
   hardware_interface
   pluginlib
@@ -52,7 +52,7 @@ ament_target_dependencies(so100_bidirectional_interface
 )
 
 # Install
-install(TARGETS so100_bidirectional_interface scservo_lib
+install(TARGETS so100_arm_interface scservo_lib
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -79,6 +79,7 @@ install(DIRECTORY scripts/
 # Install Python scripts as executables
 install(PROGRAMS
   scripts/rviz_moveit_visualizer.py
+  scripts/test_joint_states.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -87,7 +88,7 @@ install(DIRECTORY launch/
 )
 
 # Plugin export
-pluginlib_export_plugin_description_file(hardware_interface so100_bidirectional.xml)
+pluginlib_export_plugin_description_file(hardware_interface so100_arm.xml)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

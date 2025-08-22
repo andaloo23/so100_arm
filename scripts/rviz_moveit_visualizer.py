@@ -74,17 +74,17 @@ class RVizMoveItVisualizer(Node):
         """Load calibration data from the calibration.yaml file"""
         try:
             # Try to find the calibration file
-            package_share = get_package_share_directory('so100_bidirectional')
+            package_share = get_package_share_directory('so100_arm')
             calib_file = os.path.join(package_share, 'config', 'calibration.yaml')
             
             # If not found in install, try source directory
             if not os.path.exists(calib_file):
                 import rclpy
                 from ament_index_python.packages import get_package_prefix
-                pkg_prefix = get_package_prefix('so100_bidirectional')
+                pkg_prefix = get_package_prefix('so100_arm')
                 workspace_root = os.path.dirname(os.path.dirname(pkg_prefix))
                 source_calib_file = os.path.join(
-                    workspace_root, 'src', 'brukg_so100', 'so100_bidirectional', 'config', 'calibration.yaml'
+                    workspace_root, 'src', 'brukg_so100', 'so100_arm', 'config', 'calibration.yaml'
                 )
                 if os.path.exists(source_calib_file):
                     calib_file = source_calib_file
@@ -172,7 +172,7 @@ class RVizMoveItVisualizer(Node):
     def create_display_trajectory(self, waypoints, execution_time=5.0):
         """Create a DisplayTrajectory message for RViz visualization"""
         display_trajectory = DisplayTrajectory()
-        display_trajectory.model_id = "so100_bidirectional"
+        display_trajectory.model_id = "so100_arm"
         
         # Create the trajectory
         trajectory = RobotTrajectory()

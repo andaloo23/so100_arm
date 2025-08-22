@@ -16,6 +16,12 @@ def generate_launch_description():
         description='Serial port for robot communication'
     )
     
+    use_fake_hardware_arg = DeclareLaunchArgument(
+        'use_fake_hardware',
+        default_value='false',
+        description='Use fake hardware for testing without physical robot'
+    )
+    
     # Get URDF via xacro
     robot_description_content = ParameterValue(
         Command(
@@ -23,9 +29,10 @@ def generate_launch_description():
                 "xacro",
                 " ",
                 PathJoinSubstitution(
-                    [FindPackageShare("so100_bidirectional"), "config", "so100_bidirectional.urdf.xacro"]
+                    [FindPackageShare("so100_arm"), "config", "so100_arm.urdf.xacro"]
                 ),
                 " serial_port:=", LaunchConfiguration("serial_port"),
+                " use_fake_hardware:=", LaunchConfiguration("use_fake_hardware"),
             ]
         ),
         value_type=str
@@ -48,9 +55,9 @@ def generate_launch_description():
         parameters=[
             robot_description,
             PathJoinSubstitution([
-                FindPackageShare("so100_bidirectional"),
+                FindPackageShare("so100_arm"),
                 "config",
-                "hardware_config.yaml"
+                "ros2_controllers.yaml"
             ])
         ],
         output="both",
@@ -58,6 +65,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         serial_port_arg,
+        use_fake_hardware_arg,
         robot_state_publisher_node,
         controller_manager_node,
     ])

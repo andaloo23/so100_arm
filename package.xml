@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>so100_bidirectional</name>
+  <name>so100_arm</name>
   <version>0.0.0</version>
   <description>Minimal calibration-only package for SO-100 bidirectional robot arm</description>
   <maintainer email="user@example.com">User</maintainer>
@@ -37,7 +37,7 @@
 
   <export>
     <build_type>ament_cmake</build_type>
-    <hardware_interface plugin="${prefix}/so100_bidirectional.xml"/>
+    <hardware_interface plugin="${prefix}/so100_arm.xml"/>
   </export>
 
 </package>

@@ -1,0 +1,7 @@
+<library path="so100_arm_interface">
+  <class name="so100_arm/SO100ArmInterface" type="so100_arm::SO100ArmInterface" base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware interface for SO-100 robot arm (calibration only)
+    </description>
+  </class>
+</library>

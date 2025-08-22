@@ -25,19 +25,19 @@ def print_instructions():
     
     print("\n📋 TESTING PROCEDURE:")
     print("\n1. Test RViz without robot movement (default behavior):")
-    print("   ros2 launch so100_bidirectional rviz_moveit.launch.py")
+    print("   ros2 launch so100_arm rviz_moveit.launch.py")
     print("   Expected: RViz window should appear, robot should NOT move")
     
     print("\n2. Test with robot movement enabled:")
-    print("   ros2 launch so100_bidirectional rviz_moveit.launch.py auto_start_controllers:=true")
+    print("   ros2 launch so100_arm rviz_moveit.launch.py auto_start_controllers:=true")
     print("   Expected: RViz window appears, controllers start, robot may move to hold position")
     
     print("\n3. Test visualization only (no hardware):")
-    print("   ros2 launch so100_bidirectional rviz_moveit.launch.py use_hardware:=false")
+    print("   ros2 launch so100_arm rviz_moveit.launch.py use_hardware:=false")
     print("   Expected: RViz window appears, no hardware interface")
     
     print("\n4. Test with fake hardware:")
-    print("   ros2 launch so100_bidirectional rviz_moveit.launch.py use_fake_hardware:=true")
+    print("   ros2 launch so100_arm rviz_moveit.launch.py use_fake_hardware:=true")
     print("   Expected: RViz window appears, fake hardware simulation")
     
     print("\n✅ VERIFICATION CHECKLIST:")
@@ -55,13 +55,13 @@ def print_instructions():
     
     print("\n📝 USAGE EXAMPLES:")
     print("# Basic usage (safe, no movement):")
-    print("ros2 launch so100_bidirectional rviz_moveit.launch.py")
+    print("ros2 launch so100_arm rviz_moveit.launch.py")
     print()
     print("# Enable controllers (may cause movement):")
-    print("ros2 launch so100_bidirectional rviz_moveit.launch.py auto_start_controllers:=true")
+    print("ros2 launch so100_arm rviz_moveit.launch.py auto_start_controllers:=true")
     print()
     print("# Visualization only:")
-    print("ros2 launch so100_bidirectional rviz_moveit.launch.py use_hardware:=false")
+    print("ros2 launch so100_arm rviz_moveit.launch.py use_hardware:=false")
 
 if __name__ == "__main__":
     print_instructions()
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         
         try:
             subprocess.run([
-                "ros2", "launch", "so100_bidirectional", "rviz_moveit.launch.py"
+                "ros2", "launch", "so100_arm", "rviz_moveit.launch.py"
             ])
         except KeyboardInterrupt:
             print("\nLaunch stopped by user.")

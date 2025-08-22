@@ -1,6 +1,0 @@
-so100_bidirectional_controller:
-  ros__parameters:
-    use_serial: true
-    serial_port: "/dev/ttyACM0"
-    serial_baudrate: 1000000
-    calibration_file: "$(find so100_bidirectional)/config/calibration.yaml"

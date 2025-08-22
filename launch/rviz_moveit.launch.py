@@ -1,58 +1,68 @@
 #!/usr/bin/env python3
 
+import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess, TimerAction, LogInfo
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction, LogInfo
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-import os
-
 
 def generate_launch_description():
+
     # Declare arguments
-    use_rviz_arg = DeclareLaunchArgument(
-        'use_rviz',
-        default_value='true',
-        description='Start RViz'
+    declared_arguments = []
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_rviz",
+            default_value="true",
+            description="Start RViz"
+        )
     )
     
-    use_hardware_arg = DeclareLaunchArgument(
-        'use_hardware',
-        default_value='true',
-        description='Start hardware interface (set to false for simulation only)'
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_hardware",
+            default_value="true",
+            description="Start hardware interface (set to false for simulation only)"
+        )
     )
     
-    serial_port_arg = DeclareLaunchArgument(
-        'serial_port',
-        default_value='/dev/ttyACM0',
-        description='Serial port for robot communication'
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "serial_port",
+            default_value="/dev/ttyACM0",
+            description="Serial port for robot communication"
+        )
     )
     
-    use_fake_hardware_arg = DeclareLaunchArgument(
-        'use_fake_hardware',
-        default_value='true',
-        description='Use fake hardware for testing without physical robot'
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_fake_hardware",
+            default_value="false",
+            description="Use fake hardware for testing without physical robot"
+        )
     )
     
-    auto_start_controllers_arg = DeclareLaunchArgument(
-        'auto_start_controllers',
-        default_value='false',
-        description='Automatically start controllers on launch (set to true to enable robot movement)'
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "auto_start_controllers",
+            default_value="true",
+            description="Automatically start controllers on launch (set to true to enable robot movement)"
+        )
     )
-    
+
     # Package directories
-    so100_pkg = FindPackageShare("so100_bidirectional")
-    
+    so100_pkg = FindPackageShare("so100_arm")
+
     # Robot description with hardware parameters
     robot_description_content = ParameterValue(
         Command(
             [
                 "xacro",
                 " ",
-                PathJoinSubstitution([so100_pkg, "config", "so100_bidirectional.urdf.xacro"]),
+                PathJoinSubstitution([so100_pkg, "config", "so100_arm.urdf.xacro"]),
                 " serial_port:=", LaunchConfiguration("serial_port"),
                 " use_fake_hardware:=", LaunchConfiguration("use_fake_hardware"),
             ]
@@ -64,89 +74,94 @@ def generate_launch_description():
     
     # Robot semantic description (SRDF file - read as string)
     robot_description_semantic_content = ParameterValue(
-        Command(['cat ', PathJoinSubstitution([so100_pkg, "config", "so100_bidirectional.srdf"])]),
+        Command(['cat ', PathJoinSubstitution([so100_pkg, "config", "so100_arm.srdf"])]),
         value_type=str
     )
     robot_description_semantic = {
         "robot_description_semantic": robot_description_semantic_content
     }
-    
-    # MoveIt configuration parameters
-    kinematics_yaml = PathJoinSubstitution([so100_pkg, "config", "kinematics.yaml"])
-    joint_limits_yaml = PathJoinSubstitution([so100_pkg, "config", "joint_limits.yaml"])
-    moveit_controllers_yaml = PathJoinSubstitution([so100_pkg, "config", "moveit_controllers.yaml"])
-    ompl_planning_yaml = PathJoinSubstitution([so100_pkg, "config", "ompl_planning.yaml"])
-    planning_pipeline_yaml = PathJoinSubstitution([so100_pkg, "config", "planning_pipeline.yaml"])
-    
 
+    # Debug log messages
+    log_use_rviz = LogInfo(msg=["use_rviz: ", LaunchConfiguration("use_rviz")])
+    log_use_hardware = LogInfo(msg=["use_hardware: ", LaunchConfiguration("use_hardware")])
+    log_auto_start_controllers = LogInfo(msg=["auto_start_controllers: ", LaunchConfiguration("auto_start_controllers")])
     
-
-    
-    # Robot state publisher
+    # Core nodes
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         output="both",
         parameters=[robot_description],
     )
-    
-    # Hardware interface node (conditional)
-    hardware_node = Node(
+
+    ros2_control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
         parameters=[
             robot_description,
-            PathJoinSubstitution([so100_pkg, "config", "hardware_config.yaml"]),
             PathJoinSubstitution([so100_pkg, "config", "ros2_controllers.yaml"]),
         ],
         output="both",
-        condition=IfCondition(LaunchConfiguration("use_hardware")),
+        remappings=[
+            ('/joint_states', '/joint_states'),
+        ],
     )
-    
-    # Joint state broadcaster (always needed for visualization)
+
+    # Controller Spawners
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_state_broadcaster"],
+        arguments=["joint_state_broadcaster", "-c", "/controller_manager"],
         output="screen",
-        condition=IfCondition(LaunchConfiguration("use_hardware")),
     )
-    
-    # Arm controller (conditional - only if auto_start_controllers is true)
+
     arm_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["arm_controller"],
+        arguments=["arm_controller", "-c", "/controller_manager"],
         output="screen",
         condition=IfCondition(LaunchConfiguration("auto_start_controllers")),
     )
     
-    # Gripper controller (conditional - only if auto_start_controllers is true)
     gripper_controller_spawner = Node(
-        package="controller_manager", 
+        package="controller_manager",
         executable="spawner",
-        arguments=["gripper_controller"],
+        arguments=["gripper_controller", "-c", "/controller_manager"],
         output="screen",
         condition=IfCondition(LaunchConfiguration("auto_start_controllers")),
     )
     
-    # MoveIt move_group node
+    # The new explicit planning pipeline configuration
+    planning_pipeline_config = {
+        "planning_pipelines": ["ompl"],
+        "ompl": {
+            "planning_plugin": "ompl_interface/OMPLPlanner",
+            "planning_adapters": [
+                "default_planner_request_adapters/AddTimeOptimalParameterization",
+                "default_planner_request_adapters/FixWorkspaceBounds",
+                "default_planner_request_adapters/FixStartStateBounds",
+                "default_planner_request_adapters/FixStartStatePathConstraints",
+            ],
+        },
+    }
+
+    # MoveIt node - now with the correct parameter passing
     move_group_node = Node(
         package="moveit_ros_move_group",
-        executable="move_group", 
+        executable="move_group",
         output="screen",
         parameters=[
             robot_description,
             robot_description_semantic,
-            kinematics_yaml,
-            joint_limits_yaml,
-            moveit_controllers_yaml,
-            ompl_planning_yaml,
-            planning_pipeline_yaml,
+            PathJoinSubstitution([so100_pkg, "config", "kinematics.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "joint_limits.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "ompl_planning.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "moveit_controllers.yaml"]),
             {"use_sim_time": False},
+            planning_pipeline_config, # Explicitly add the planning pipeline config
         ],
     )
-    
+
     # RViz node
     rviz_config_file = PathJoinSubstitution([so100_pkg, "config", "moveit.rviz"])
     rviz_node = Node(
@@ -154,73 +169,41 @@ def generate_launch_description():
         executable="rviz2",
         name="rviz2",
         output="screen",
-        arguments=["-d", rviz_config_file, "--ros-args", "--log-level", "info"],
+        arguments=["-d", rviz_config_file],
         parameters=[
             robot_description,
             robot_description_semantic,
-            kinematics_yaml,
-            joint_limits_yaml,
-            ompl_planning_yaml,
-            planning_pipeline_yaml,
+            PathJoinSubstitution([so100_pkg, "config", "kinematics.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "joint_limits.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "ompl_planning.yaml"]),
+            PathJoinSubstitution([so100_pkg, "config", "moveit_controllers.yaml"]),
+            planning_pipeline_config, # Explicitly add the planning pipeline config
         ],
         condition=IfCondition(LaunchConfiguration("use_rviz")),
     )
-    
-    # Position visualizer script (conditional - only with hardware)
-    visualizer_node = Node(
-        package="so100_bidirectional",
-        executable="rviz_moveit_visualizer.py",
-        name="rviz_moveit_visualizer",
-        output="screen",
-        parameters=[robot_description],
-        condition=IfCondition(LaunchConfiguration("use_hardware")),
-    )
-    
-    # Delay some nodes to ensure proper startup order
-    delayed_move_group = TimerAction(
-        period=3.0,
-        actions=[move_group_node]
-    )
-    
-    delayed_rviz = TimerAction(
-        period=5.0,
-        actions=[rviz_node]
-    )
-    
-    delayed_visualizer = TimerAction(
-        period=6.0,
-        actions=[visualizer_node]
-    )
-    
-    # Debug log messages
-    log_use_rviz = LogInfo(msg=["use_rviz: ", LaunchConfiguration("use_rviz")])
-    log_use_hardware = LogInfo(msg=["use_hardware: ", LaunchConfiguration("use_hardware")])
-    log_auto_start_controllers = LogInfo(msg=["auto_start_controllers: ", LaunchConfiguration("auto_start_controllers")])
 
-    return LaunchDescription([
-        # Arguments
-        use_rviz_arg,
-        use_hardware_arg,
-        serial_port_arg,
-        use_fake_hardware_arg,
-        auto_start_controllers_arg,
-        
-        # Debug log messages
+    return LaunchDescription(declared_arguments + [
         log_use_rviz,
-        log_use_hardware, 
+        log_use_hardware,
         log_auto_start_controllers,
         
-        # Core nodes
         robot_state_publisher_node,
-        hardware_node,
+        ros2_control_node,
         
-        # Controllers (with delays)
-        TimerAction(period=2.0, actions=[joint_state_broadcaster_spawner]),
-        TimerAction(period=2.5, actions=[arm_controller_spawner]),
-        TimerAction(period=2.7, actions=[gripper_controller_spawner]),
+        TimerAction(
+            period=2.0,
+            actions=[
+                joint_state_broadcaster_spawner,
+                arm_controller_spawner,
+                gripper_controller_spawner,
+            ]
+        ),
         
-        # MoveIt and visualization
-        delayed_move_group,
-        delayed_rviz,
-        delayed_visualizer,
+        TimerAction(
+            period=8.0,
+            actions=[
+                move_group_node,
+                rviz_node,
+            ]
+        )
     ])

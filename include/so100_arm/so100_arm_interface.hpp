@@ -1,5 +1,5 @@
-#ifndef SO100_BIDIRECTIONAL_INTERFACE_H
-#define SO100_BIDIRECTIONAL_INTERFACE_H
+#ifndef SO100_ARM_INTERFACE_H
+#define SO100_ARM_INTERFACE_H
 
 #include <rclcpp/rclcpp.hpp>
 #include "rclcpp/macros.hpp"
@@ -24,16 +24,16 @@
 #include "std_srvs/srv/trigger.hpp"
 #include <yaml-cpp/yaml.h>
 
-namespace so100_bidirectional
+namespace so100_arm
 {
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
-class SO100BidirectionalInterface : public hardware_interface::SystemInterface
+class SO100ArmInterface : public hardware_interface::SystemInterface
 {
 public:
-  SO100BidirectionalInterface();
-  virtual ~SO100BidirectionalInterface();
+  SO100ArmInterface();
+  virtual ~SO100ArmInterface();
 
   // LifecycleNodeInterface
   CallbackReturn on_init(const hardware_interface::HardwareInfo &hardware_info) override;
@@ -57,6 +57,7 @@ private:
     int min_ticks;
     int center_ticks;
     int max_ticks;
+    int home_ticks;
     double range_ticks;
   };
   std::map<std::string, JointCalibration> joint_calibration_;
@@ -90,6 +91,7 @@ private:
 
   void record_current_position();
   void set_torque_enable(bool enable);
+  void move_to_home_position();
 
   std::string last_calibration_data_;
   bool torque_enabled_{true};
@@ -99,6 +101,6 @@ private:
   bool load_calibration(const std::string& filepath);
 };
 
-}  // namespace so100_bidirectional
+}  // namespace so100_arm
 
 #endif  // SO100_BIDIRECTIONAL_INTERFACE_H

@@ -1,7 +1,0 @@
-<library path="so100_bidirectional_interface">
-  <class name="so100_bidirectional/SO100BidirectionalInterface" type="so100_bidirectional::SO100BidirectionalInterface" base_class_type="hardware_interface::SystemInterface">
-    <description>
-      Hardware interface for SO-100 bidirectional robot arm (calibration only)
-    </description>
-  </class>
-</library>

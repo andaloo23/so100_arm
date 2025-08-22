@@ -1,32 +1,32 @@
 /**:
   ros__parameters:
     joint_limits:
-      Shoulder_Rotation:
+      shoulder_pan_joint:
         has_velocity_limits: true
         max_velocity: 1.0
         has_acceleration_limits: true
         max_acceleration: 2.0
-      Shoulder_Pitch:
+      shoulder_lift_joint:
         has_velocity_limits: true
         max_velocity: 1.0
         has_acceleration_limits: true
         max_acceleration: 2.0
-      Elbow:
+      elbow_joint:
         has_velocity_limits: true
         max_velocity: 1.0
         has_acceleration_limits: true
         max_acceleration: 2.0
-      Wrist_Pitch:
+      wrist_pitch_joint:
         has_velocity_limits: true
         max_velocity: 1.0
         has_acceleration_limits: true
         max_acceleration: 2.0
-      Wrist_Roll:
+      wrist_roll_joint:
         has_velocity_limits: true
         max_velocity: 1.0
         has_acceleration_limits: true
         max_acceleration: 2.0
-      Gripper:
+      gripper_joint:
         has_velocity_limits: true
         max_velocity: 0.5
         has_acceleration_limits: true

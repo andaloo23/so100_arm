@@ -33,10 +33,10 @@ class CalibrationTool(Node):
             # Look for source directory (for development)
             import rclpy
             from ament_index_python.packages import get_package_prefix
-            pkg_prefix = get_package_prefix('so100_bidirectional')
+            pkg_prefix = get_package_prefix('so100_arm')
             # Go from install back to source
             workspace_root = os.path.dirname(os.path.dirname(pkg_prefix))
-            source_config_dir = os.path.join(workspace_root, 'src', 'brukg_so100', 'so100_bidirectional', 'config')
+            source_config_dir = os.path.join(workspace_root, 'src', 'brukg_so100', 'so100_arm', 'config')
             
             if os.path.exists(source_config_dir):
                 self.config_dir = source_config_dir
@@ -44,14 +44,14 @@ class CalibrationTool(Node):
             else:
                 # Fall back to install directory
                 self.config_dir = os.path.join(
-                    get_package_share_directory('so100_bidirectional'),
+                    get_package_share_directory('so100_arm'),
                     'config',
                 )
                 print(f"Using install config directory: {self.config_dir}")
         except Exception as e:
             # Fall back to install directory
             self.config_dir = os.path.join(
-                get_package_share_directory('so100_bidirectional'),
+                get_package_share_directory('so100_arm'),
                 'config',
             )
             print(f"Using install config directory: {self.config_dir}")

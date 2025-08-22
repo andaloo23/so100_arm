@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="so100_bidirectional">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="so100_arm">
 
   <!-- Parameters -->
   <xacro:arg name="serial_port" default="/dev/ttyACM0"/>
   <xacro:arg name="use_fake_hardware" default="false"/>
 
-  <xacro:include filename="$(find so100_bidirectional)/config/so100_bidirectional.ros2_control.xacro"/>
+  <xacro:include filename="$(find so100_arm)/config/so100_arm.ros2_control.xacro"/>
 
   <!-- Dummy world link to avoid KDL root link inertia warning -->
   <link name="world"/>
@@ -22,7 +22,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57079"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Base.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Base.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="black">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -31,7 +31,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Base.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Base.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -53,7 +53,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="blue">
         <color rgba="0.0 0.0 1.0 1"/>
@@ -62,7 +62,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Shoulder_Rotation_Pitch.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -84,7 +84,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="green">
         <color rgba="0.0 1.0 0.0 1"/>
@@ -93,7 +93,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Upper_Arm.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -115,7 +115,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079 0 1.57079"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="red">
         <color rgba="1.0 0.0 0.0 1"/>
@@ -124,7 +124,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Lower_Arm.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -146,7 +146,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57079"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="yellow">
         <color rgba="1.0 1.0 0.0 1"/>
@@ -155,7 +155,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Wrist_Pitch_Roll.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -177,7 +177,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="cyan">
         <color rgba="0.0 1.0 1.0 1"/>
@@ -186,7 +186,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Fixed_Gripper.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -208,7 +208,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="magenta">
         <color rgba="1.0 0.0 1.0 1"/>
@@ -217,7 +217,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://so100_bidirectional/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
+        <mesh filename="package://so100_arm/meshes/Moving_Jaw.STL" scale="1.0 1.0 1.0"/>
       </geometry>
     </collision>
     <inertial>
@@ -236,12 +236,12 @@
   <link name="end_effector_link"/>
 
   <!-- ROS2 Control -->
-  <xacro:so100_bidirectional_ros2_control 
-    name="SO100BidirectionalHardware" 
+  <xacro:so100_arm_ros2_control 
+    name="SO100ArmHardware" 
     use_serial="true"
     serial_port="$(arg serial_port)" 
     serial_baudrate="1000000"
     use_fake_hardware="$(arg use_fake_hardware)"
-    calibration_file="$(find so100_bidirectional)/config/calibration.yaml"/>
+    calibration_file="$(find so100_arm)/config/calibration.yaml"/>
 
 </robot>

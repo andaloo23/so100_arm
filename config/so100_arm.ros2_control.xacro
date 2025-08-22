@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="so100_bidirectional_ros2_control" params="name use_serial serial_port serial_baudrate calibration_file use_fake_hardware:=false">
+  <xacro:macro name="so100_arm_ros2_control" params="name use_serial serial_port serial_baudrate calibration_file use_fake_hardware:=false">
     
     <ros2_control name="${name}" type="system">
       <hardware>
@@ -9,8 +9,8 @@
           <plugin>mock_components/GenericSystem</plugin>
         </xacro:if>
         <xacro:unless value="${use_fake_hardware}">
-          <plugin>so100_bidirectional/SO100BidirectionalInterface</plugin>
-          <param name="use_serial">${use_serial}</param>
+          <plugin>so100_arm/SO100ArmInterface</plugin>
+          <param name="use_serial">true</param>
           <param name="serial_port">${serial_port}</param>
           <param name="serial_baudrate">${serial_baudrate}</param>
           <param name="calibration_file">${calibration_file}</param>
